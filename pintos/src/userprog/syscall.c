@@ -24,15 +24,16 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case(SYS_EXIT):
     {
-      printf("exit call");
       f->eax = 0;
       thread_exit();
       break;
     }
     case(SYS_EXEC):
-      printf("exec call");
+    {
+		
       thread_exit();
       break;
+    }
     case(SYS_WAIT):
       printf("wait call");
       thread_exit();
@@ -59,33 +60,8 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case(SYS_WRITE):
     {
-      int file_descriptor = *(syscall_num + 1);
-      const void *buff= *(syscall_num + 2);
-      unsigned size= *(syscall_num + 3);
-      buff = pagedir_get_page(thread_current()->pagedir, buff);
-      f->eax = write(file_descriptor,buff, size);
-      
-      /*if(file_descriptor == 1)
-      {
-		  int a = (int)size;
-		  printf("This\n");
-		  while(a>=100)
-		  {
-			  printf("Shit\n");
-			  putbuf(buff, 100);
-			  printf("a\n");
-			  buff = buff+100;
-			  printf("b\n");
-			  a -= 100;
-			  printf("c\n");
-		  }
-		  printf("Yo\n");
-		  putbuf(buff, a);
-		  printf("asdf\n"); 
-		  f->eax = (int)size;
-	  }
-	  printf("jkl;\n");
-      */
+      if(getArgument(f,1) == 1)
+		    write(getArgument(f,1),getArgument(f,2),getArgument(f,3)); 
       break;
     }
     case(SYS_SEEK):
@@ -114,6 +90,11 @@ int write (int fd, const void *buffer, unsigned size)
       return size;
     }
   return 0;
+}
+
+pid_t exec (const char *cmd_line)
+{
+	pid_t = process_execute(cmd_line);
 }
 
 static int 
