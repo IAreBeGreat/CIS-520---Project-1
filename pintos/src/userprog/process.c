@@ -15,11 +15,15 @@
 #include "threads/init.h"
 #include "threads/interrupt.h"
 #include "threads/palloc.h"
+#include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+#define MAX_ARG_SIZE 4096
+
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static int set_up_user_stack(void **esp, char **save_pointer, char *token);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -28,7 +32,7 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
-  char *fn_copy;
+  char *fn_copy,*fn_cpy, *save_pointer;
   tid_t tid;
 
   /* Make a copy of FILE_NAME.
@@ -37,11 +41,24 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
+  fn_cpy = malloc(strlen(file_name)+1);
+  if(fn_cpy == NULL)
+  {
+	  palloc_free_page(fn_copy);
+	  return TID_ERROR;
+  }
+  strlcpy(fn_cpy,file_name, PGSIZE);
+  file_name = strtok_r(file_name," ", &save_pointer);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  free(fn_cpy);
   if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+  {
+    palloc_free_page (fn_copy);
+    return tid;
+  }
+  
   return tid;
 }
 
@@ -53,18 +70,34 @@ start_process (void *file_name_)
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
+  char *save_pointer, *token;
+  struct thread *cur;
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
 
+  token = strtok_r(file_name," ", &save_pointer);
+  success = load(file_name, &if_.eip, &if_.esp);
+  cur = thread_current();
+  
   /* If load failed, quit. */
-  palloc_free_page (file_name);
-  if (!success) 
+  if(success)
+  {
+	  set_up_user_stack(&if_.esp, &save_pointer, token);
+	  //cur->exec = filesys_open(file_name);
+	  //file_deny_write(cur->exec);
+  }
+  else
+  {
+    palloc_free_page (file_name);
+    //cur->ret_status = -1;
     thread_exit ();
+  }
+  
+  palloc_free_page (file_name);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -74,6 +107,60 @@ start_process (void *file_name_)
      and jump to it. */
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
+}
+
+static int
+set_up_user_stack(void **esp, char **save_pointer, char *token)
+{
+	int args_pushed = 0;
+	int argc = 0;
+	void * stack_pointer = *esp;
+	char * argument_pointer;
+	
+	do
+	{
+		size_t length = strlen(token) +1;
+		stack_pointer = (void *) (((char *)stack_pointer)-length);
+		strlcpy((char*)stack_pointer,token,length);
+		argc ++;
+		if(PHYS_BASE - stack_pointer > MAX_ARG_SIZE)
+		{
+			return 0;
+		}
+		token = strtok_r(NULL, " ", save_pointer);
+	}while(token != NULL);
+	
+	argument_pointer = (char *) stack_pointer;
+	stack_pointer = (void *) (((intptr_t) stack_pointer) & 0xfffffffc);
+	stack_pointer = (((char**)stack_pointer)-1);
+	*((char*)(stack_pointer)) = 0;
+	
+	while(args_pushed < argc)
+	{
+		while(*(argument_pointer - 1) != '\0')
+		{
+			++argument_pointer;
+		}
+		stack_pointer = (((char**)stack_pointer) - 1);
+		*((char**)(stack_pointer)) = argument_pointer;
+		++args_pushed;
+		++argument_pointer;
+	}
+	
+	char ** first_argument = (char**) stack_pointer;
+	stack_pointer = (((char**)stack_pointer)-1);
+	*((char***)stack_pointer) = first_argument;
+	
+	int * stack_int = (char**) stack_pointer;
+	--stack_int;
+	*stack_int = argc;
+	stack_pointer = (void*) stack_int;
+	
+	stack_pointer = (((void**) stack_pointer) - 1);
+	*((void**)(stack_pointer)) = 0;
+	
+	*esp = stack_pointer;
+	return 1;
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
@@ -88,6 +175,10 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+	while(true)
+	{
+		
+	}
   return -1;
 }
 
@@ -180,7 +271,7 @@ struct Elf32_Phdr
     Elf32_Word p_align;
   };
 
-/* Values for p_type.  See [ELF1] 2-3. */
+/* Values for p_type.  See [ELF0] 2-3. */
 #define PT_NULL    0            /* Ignore. */
 #define PT_LOAD    1            /* Loadable segment. */
 #define PT_DYNAMIC 2            /* Dynamic linking info. */
