@@ -13,22 +13,21 @@ syscall_init (void)
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
-static void
-syscall_handler (struct intr_frame *f UNUSED) 
+ static void
+ syscall_handler (struct intr_frame *f UNUSED) 
 { 
-  int *syscall_num = f->esp;
-  switch(*syscall_num)
+  int syscall_num;
+  memcpy( &syscall_num, f->esp, sizeof(int));
+  switch(syscall_num)
   { 
     case(SYS_HALT):
       shutdown_power_off();
       break;
     case(SYS_EXIT):
-    {
       printf("exit call");
       f->eax = 0;
       thread_exit();
       break;
-    }
     case(SYS_EXEC):
       printf("exec call");
       thread_exit();
@@ -58,36 +57,9 @@ syscall_handler (struct intr_frame *f UNUSED)
       thread_exit();
       break;
     case(SYS_WRITE):
-    {
-      int file_descriptor = *(syscall_num + 1);
-      const void *buff= *(syscall_num + 2);
-      unsigned size= *(syscall_num + 3);
-      buff = pagedir_get_page(thread_current()->pagedir, buff);
-      f->eax = write(file_descriptor,buff, size);
-      
-      /*if(file_descriptor == 1)
-      {
-		  int a = (int)size;
-		  printf("This\n");
-		  while(a>=100)
-		  {
-			  printf("Shit\n");
-			  putbuf(buff, 100);
-			  printf("a\n");
-			  buff = buff+100;
-			  printf("b\n");
-			  a -= 100;
-			  printf("c\n");
-		  }
-		  printf("Yo\n");
-		  putbuf(buff, a);
-		  printf("asdf\n"); 
-		  f->eax = (int)size;
-	  }
-	  printf("jkl;\n");
-      */
+      if(getArgument(f,1) == 1)
+		    putbuf(getArgument(f,2), getArgument(f,3)); 
       break;
-    }
     case(SYS_SEEK):
       printf("seek call");
       thread_exit();
