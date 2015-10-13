@@ -1,8 +1,18 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include <user/syscall.h>
+#include "devices/input.h"
+#include "devices/shutdown.h"
+#include "filesys/file.h"
+#include "filesys/filesys.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
+#include "threads/synch.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+#include "userprog/process.h"
 
 static void syscall_handler (struct intr_frame *);
 static int getArgument(struct intr_frame *, int);
@@ -13,34 +23,27 @@ syscall_init (void)
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
- static void
- syscall_handler (struct intr_frame *f UNUSED) 
+static void
+syscall_handler (struct intr_frame *f UNUSED) 
 { 
-  int syscall_num;
-  memcpy( &syscall_num, f->esp, sizeof(int));
-  switch(syscall_num)
+  int *syscall_num = f->esp;
+  switch(*syscall_num)
   { 
     case(SYS_HALT):
       shutdown_power_off();
       break;
     case(SYS_EXIT):
-<<<<<<< HEAD
     {
-=======
-      printf("exit call");
->>>>>>> 3a63c524a0e179935074e013a27960d004655e2e
-      f->eax = 0;
-      thread_exit();
+      exit(getArgument(f,1));
       break;
+    }
     case(SYS_EXEC):
     {
-		
-      thread_exit();
+		f->eax = exec((const char *)getArgument(f,1));
       break;
     }
     case(SYS_WAIT):
-      printf("wait call");
-      thread_exit();
+      f->eax = wait(getArgument(f,1));
       break;
     case(SYS_CREATE):
       printf("create call");
@@ -63,15 +66,11 @@ syscall_init (void)
       thread_exit();
       break;
     case(SYS_WRITE):
-<<<<<<< HEAD
     {
       if(getArgument(f,1) == 1)
 		    write(getArgument(f,1),getArgument(f,2),getArgument(f,3)); 
-=======
-      if(getArgument(f,1) == 1)
-		    putbuf(getArgument(f,2), getArgument(f,3)); 
->>>>>>> 3a63c524a0e179935074e013a27960d004655e2e
       break;
+    }
     case(SYS_SEEK):
       printf("seek call");
       thread_exit();
@@ -100,17 +99,64 @@ int write (int fd, const void *buffer, unsigned size)
   return 0;
 }
 
-pid_t exec (const char *cmd_line)
+void exit(int status)
 {
-	pid_t = process_execute(cmd_line);
+	struct thread *cur = thread_current();
+	if(thread_alive(cur->parent))
+	{
+		cur->cp->status = status;
+	}
+	printf("%s: exit(%d)\n",cur->name,status);
+	thread_exit();
 }
 
-static int 
-getArgument(struct intr_frame *f, int index)
+pid_t exec (const char *cmd_line)
+{
+	pid_t pid  = process_execute(cmd_line);
+	return pid;
+}
+
+int wait(pid_t pid)
+{
+	return process_wait(pid);
+}
+
+static int getArgument(struct intr_frame *f, int index)
 {
   int arg1;
   memcpy( &arg1, ((int *)(f->esp))+index, sizeof(int));
   return arg1;
 }
-  
+
+struct child_process* add_child(int pid)
+{
+	struct child_process* cp = malloc(sizeof(struct child_process));
+	cp->pid = pid;
+	cp->wait = false;
+	cp->exit = false;
+	list_push_back(&thread_current()->child_list, &cp->elem);
+	return cp;
+}
+
+struct child_process* get_child(pid)
+{
+	struct thread * t = thread_current();
+	struct list_elem* e;
+	struct child_process* cp;
+	for(e = list_begin(&t->child_list); e != list_end(&t->child_list); e = list_next(e))
+	{
+		cp =  list_entry(e, struct child_process, elem);
+		if(cp->pid == pid)
+		{
+			return cp;
+		}
+	}
+	return NULL;
+}
+
+void remove_child(struct child_process * cp)
+{
+	list_remove(&cp->elem);
+	free(cp);
+}
  
