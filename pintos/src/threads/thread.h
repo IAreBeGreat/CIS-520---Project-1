@@ -156,11 +156,9 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-
-<<<<<<< HEAD
 bool thread_alive(int pid);
-=======
+
 struct fd_file_pair *get_fd_file_pair (int given_fd);
->>>>>>> 7e78dbe2516a04115c4dfdca837e663eb7fbcd08
+
 
 #endif /* threads/thread.h */
