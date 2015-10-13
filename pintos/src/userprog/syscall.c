@@ -10,9 +10,13 @@
 #include "threads/malloc.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+<<<<<<< HEAD
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
+=======
+#include "filesys/file.h"
+>>>>>>> 7e78dbe2516a04115c4dfdca837e663eb7fbcd08
 
 static void syscall_handler (struct intr_frame *);
 static int getArgument(struct intr_frame *, int);
@@ -33,8 +37,13 @@ syscall_handler (struct intr_frame *f UNUSED)
       shutdown_power_off();
       break;
     case(SYS_EXIT):
+<<<<<<< HEAD
     {
       exit(getArgument(f,1));
+=======
+      f->eax = 0;
+      thread_exit();
+>>>>>>> 7e78dbe2516a04115c4dfdca837e663eb7fbcd08
       break;
     }
     case(SYS_EXEC):
@@ -66,9 +75,16 @@ syscall_handler (struct intr_frame *f UNUSED)
       thread_exit();
       break;
     case(SYS_WRITE):
+<<<<<<< HEAD
     {
       if(getArgument(f,1) == 1)
 		    write(getArgument(f,1),getArgument(f,2),getArgument(f,3)); 
+=======
+      if(getArgument(f,1) == 1)
+		    putbuf(getArgument(f,2), getArgument(f,3));
+		  else if(getArgument(f,1)>1 && getArgument(f,1) < thread_current()->fd_index)
+		     file_write(get_fd_file_pair(getArgument(f,1))->file, getArgument(f,2), getArgument(f,3));
+>>>>>>> 7e78dbe2516a04115c4dfdca837e663eb7fbcd08
       break;
     }
     case(SYS_SEEK):
@@ -99,6 +115,7 @@ int write (int fd, const void *buffer, unsigned size)
   return 0;
 }
 
+<<<<<<< HEAD
 void exit(int status)
 {
 	struct thread *cur = thread_current();
@@ -115,6 +132,12 @@ pid_t exec (const char *cmd_line)
 	pid_t pid  = process_execute(cmd_line);
 	return pid;
 }
+=======
+//pid_t exec (const char *cmd_line)
+//{
+	//pid_t = process_execute(cmd_line);
+//}
+>>>>>>> 7e78dbe2516a04115c4dfdca837e663eb7fbcd08
 
 int wait(pid_t pid)
 {

@@ -89,6 +89,9 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
+    
+    int fd_index;
+    struct list fd_file_list;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -108,6 +111,15 @@ struct thread
     tid_t parent;
     struct child_process* cp;
   };
+  
+struct fd_file_pair
+{
+
+  int fd;
+  struct file *file;
+  struct list_elem file_elem;
+
+};
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -145,6 +157,10 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
+<<<<<<< HEAD
 bool thread_alive(int pid);
+=======
+struct fd_file_pair *get_fd_file_pair (int given_fd);
+>>>>>>> 7e78dbe2516a04115c4dfdca837e663eb7fbcd08
 
 #endif /* threads/thread.h */

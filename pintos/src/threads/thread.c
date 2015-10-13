@@ -473,6 +473,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  
+  list_init(&t->fd_file_list);
+  t->fd_index = 2;
+  
   list_push_back (&all_list, &t->allelem);
   
   list_init(&t->child_list);
@@ -575,6 +579,22 @@ schedule (void)
   if (cur != next)
     prev = switch_threads (cur, next);
   thread_schedule_tail (prev);
+}
+
+struct fd_file_pair *
+get_fd_file_pair (int given_fd)
+{
+  struct list_elem *file_e;
+  
+  for (file_e = list_begin (&thread_current()->fd_file_list); file_e != list_end(&thread_current()->fd_file_list); file_e = list_next(file_e))
+  {
+  
+    struct fd_file_pair *pair = list_entry(file_e, struct fd_file_pair, file_elem);
+    if(pair->fd == given_fd)
+      return pair;
+  
+  } 
+  return NULL;
 }
 
 /* Returns a tid to use for a new thread. */
