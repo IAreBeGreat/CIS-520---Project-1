@@ -37,8 +37,12 @@ syscall_handler (struct intr_frame *f UNUSED)
       shutdown_power_off();
       break;
     case(SYS_EXIT):
-
     {
+      if(!valid_argument(f,1))
+      {
+        f->eax=-1;
+        thread_exit();
+      }
       exit(getArgument(f,1));
 
       f->eax = 0;
@@ -48,19 +52,44 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
     case(SYS_EXEC):
     {
-		f->eax = exec((const char *)getArgument(f,1));
+      if(!valid_argument(f,1))
+      {
+        f->eax=-1;
+        thread_exit();
+      }
+		  f->eax = exec((const char *)getArgument(f,1));
       break;
     }
     case(SYS_WAIT):
+      if(!valid_argument(f,1))
+      {
+        f->eax=-1;
+        thread_exit();
+      }
       f->eax = wait(getArgument(f,1));
       break;
     case(SYS_CREATE):
+      if(!valid_argument(f,1) || !valid_argument(f,2))
+      {
+        f->eax=-1;
+        thread_exit();
+      }
       f->eax = filesys_create(getArgument(f,1),getArgument(f,2));
       break;
     case(SYS_REMOVE):
+      if(!valid_argument(f,1))
+      {
+        f->eax=-1;
+        thread_exit();
+      }
       f->eax = filesys_remove(getArgument(f,1));
       break;
     case(SYS_OPEN):
+      if(!valid_argument(f,1))
+      {
+        f->eax=-1;
+        thread_exit();
+      }
       f_pair = calloc(1, sizeof (struct fd_file_pair));
       f_pair->file = file_open(file_get_inode(getArgument(f,1)));
       if(f_pair->file == NULL)
@@ -70,29 +99,35 @@ syscall_handler (struct intr_frame *f UNUSED)
         thread_exit();
         break;
       }
-      int fd = thread_current()->fd_index;
+      f_pair->fd = thread_current()->fd_index;
       thread_current()->fd_index++;
-      f_pair->fd = fd;
       list_push_front(&thread_current()->fd_file_list, &f_pair->file_elem);
-      f->eax=fd;
+      f->eax=f_pair->fd;
       break;
     case(SYS_FILESIZE):
       printf("filesize call");
       thread_exit();
       break;
-    case(SYS_READ): 
+    case(SYS_READ):
+      if(!valid_argument(f,1)||!valid_argument(f,2)||!valid_argument(f,3)) 
+      {
+        f->eax=-1;
+        thread_exit();
+      } 
       if(getArgument(f,1))
         input_getc();
       else if(getArgument(f,1)<thread_current()->fd_index)
       {
-        f_pair = get_fd_file_pair(fd);
+        f_pair = get_fd_file_pair(getArgument(f,1));
         f->eax=(file_read(f_pair->file, getArgument(f,2), getArgument(f,3)));
       }
       break;
     case(SYS_WRITE):
-
-    {
-
+      if(!valid_argument(f,1)||!valid_argument(f,2)||!valid_argument(f,3))
+      {
+        f->eax=-1;
+        thread_exit();
+      }
       if(getArgument(f,1) == 1)
       {
 		    putbuf(getArgument(f,2), getArgument(f,3));
@@ -101,9 +136,12 @@ syscall_handler (struct intr_frame *f UNUSED)
 		  else if(getArgument(f,1)>1 && getArgument(f,1) < thread_current()->fd_index)
 		     f->eax = file_write(get_fd_file_pair(getArgument(f,1))->file, getArgument(f,2), getArgument(f,3));
       break;
-    }
     case(SYS_SEEK):
-      ;
+      if(!valid_argument(f,1)||!valid_argument(f,2))
+      {
+        f->eax=-1;
+        thread_exit();
+      }
       int fd = getArgument(f, 1);
       if(fd < (thread_current()->fd_index))
       {
@@ -111,7 +149,12 @@ syscall_handler (struct intr_frame *f UNUSED)
         file_seek(f_pair->file, getArgument(f,2));
       }
       break;
-    case(SYS_TELL):
+    case(SYS_TELL): 
+      if(!valid_argument(f,1))
+      {
+        f->eax=-1;
+        thread_exit();
+      }
       if(getArgument(f,1)<2 || getArgument(f,1) > thread_current()->fd_index)
       {
         printf("tell fail"); 
@@ -120,6 +163,11 @@ syscall_handler (struct intr_frame *f UNUSED)
       f->eax = file_tell(get_fd_file_pair(getArgument(f,1))->file);
       break;
     case(SYS_CLOSE):
+      if(!valid_argument(f,1))
+      {
+        f->eax=-1;
+        thread_exit();
+      }
       if(getArgument(f,1)<2 || getArgument(f,1) > thread_current()->fd_index)
       {
         printf("close fail"); 
@@ -168,7 +216,7 @@ static int getArgument(struct intr_frame *f, int index)
 static int valid_argument(struct intr_frame * f, int index)
 {
   int * point = (int *)(f->esp)+index;
-  return point!=NULL && is_user_vaddr(point) && (pagedir_get_page(thread_current()->pagedir, point)!=NULL);
+  return (point!=NULL && is_user_vaddr(point) && (pagedir_get_page(thread_current()->pagedir, point)!=NULL));
 }
 
 struct child_process* add_child(int pid)
