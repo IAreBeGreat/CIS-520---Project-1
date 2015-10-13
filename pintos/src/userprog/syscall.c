@@ -3,6 +3,7 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "filesys/file.h"
 
 static void syscall_handler (struct intr_frame *);
 static int getArgument(struct intr_frame *, int);
@@ -24,11 +25,6 @@ syscall_init (void)
       shutdown_power_off();
       break;
     case(SYS_EXIT):
-<<<<<<< HEAD
-    {
-=======
-      printf("exit call");
->>>>>>> 3a63c524a0e179935074e013a27960d004655e2e
       f->eax = 0;
       thread_exit();
       break;
@@ -63,14 +59,10 @@ syscall_init (void)
       thread_exit();
       break;
     case(SYS_WRITE):
-<<<<<<< HEAD
-    {
       if(getArgument(f,1) == 1)
-		    write(getArgument(f,1),getArgument(f,2),getArgument(f,3)); 
-=======
-      if(getArgument(f,1) == 1)
-		    putbuf(getArgument(f,2), getArgument(f,3)); 
->>>>>>> 3a63c524a0e179935074e013a27960d004655e2e
+		    putbuf(getArgument(f,2), getArgument(f,3));
+		  else if(getArgument(f,1)>1 && getArgument(f,1) < thread_current()->fd_index)
+		     file_write(get_fd_file_pair(getArgument(f,1))->file, getArgument(f,2), getArgument(f,3));
       break;
     case(SYS_SEEK):
       printf("seek call");
@@ -100,10 +92,10 @@ int write (int fd, const void *buffer, unsigned size)
   return 0;
 }
 
-pid_t exec (const char *cmd_line)
-{
-	pid_t = process_execute(cmd_line);
-}
+//pid_t exec (const char *cmd_line)
+//{
+	//pid_t = process_execute(cmd_line);
+//}
 
 static int 
 getArgument(struct intr_frame *f, int index)

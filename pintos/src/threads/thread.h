@@ -89,6 +89,9 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
+    
+    int fd_index;
+    struct list fd_file_list;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -101,6 +104,15 @@ struct thread
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
+  
+struct fd_file_pair
+{
+
+  int fd;
+  struct file *file;
+  struct list_elem file_elem;
+
+};
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -137,5 +149,7 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+struct fd_file_pair *get_fd_file_pair (int given_fd);
 
 #endif /* threads/thread.h */
