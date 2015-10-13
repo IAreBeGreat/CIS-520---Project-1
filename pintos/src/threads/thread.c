@@ -205,6 +205,10 @@ thread_create (const char *name, int priority,
   sf->ebp = 0;
 
   intr_set_level (old_level);
+  
+  t->parent = thread_tid();
+  struct chiled_process *cp = add_child(t->tid);
+  t->cp = cp;
 
   /* Add to run queue. */
   thread_unblock (t);
@@ -474,6 +478,11 @@ init_thread (struct thread *t, const char *name, int priority)
   t->fd_index = 2;
   
   list_push_back (&all_list, &t->allelem);
+  
+  list_init(&t->child_list);
+  t->cp = NULL;
+  t->parent = -1;
+  t->fd = 2;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -605,3 +614,18 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+bool thread_alive(int pid)
+{
+	struct list_elem *e;
+	struct thread *t;
+	for(e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e))
+	{
+		t = list_entry(e, struct thread, allelem);
+		if(pid == t->tid)
+		{
+			return true;
+		}
+	}
+	return false;
+}

@@ -18,6 +18,7 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/syscall.h"
 
 #define MAX_ARG_SIZE 4096
 
@@ -175,11 +176,23 @@ set_up_user_stack(void **esp, char **save_pointer, char *token)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-	while(true)
+	struct child_process* cp = get_child(child_tid);
+	if(!cp)
 	{
-		
+	   return -1;
+    }
+	if(cp->wait)
+	{
+	   return -1;
+    }
+	cp->wait = true;
+	while(!cp->exit)
+	{
+		barrier();
 	}
-  return -1;
+	int status = cp->status;
+	remove_child(cp);
+  return status;
 }
 
 /* Free the current process's resources. */
@@ -188,6 +201,11 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+  
+  if(thread_alive(cur->parent))
+  {
+	  cur->cp->exit = true;
+  }
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
