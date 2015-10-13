@@ -12,7 +12,7 @@ main (int argc, char *argv[])
 
   if (argc != 3) 
     {
-      printf ("usage: cp OLD NEW\n%d", argc);
+      printf ("usage: cp OLD NEW\n");
       return EXIT_FAILURE;
     }
 

@@ -118,6 +118,11 @@ int write (int fd, const void *buffer, unsigned size)
   return 0;
 }
 
+//pid_t exec (const char *cmd_line)
+//{
+	//pid_t = process_execute(cmd_line);
+//}
+
 static int 
 getArgument(struct intr_frame *f, int index)
 {
